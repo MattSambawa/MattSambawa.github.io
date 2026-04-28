@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Matthew A. Sambawa — MTG Portfolio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;1,8..60,300;1,8..60,400&display=swap" rel="stylesheet" />
+
+  <!--
+  ╔══════════════════════════════════════════════════════════════════════════╗
+  ║           SCRYFALL API INTEGRATION — HOW TO CUSTOMIZE CARDS             ║
+  ╠══════════════════════════════════════════════════════════════════════════╣
+  ║                                                                          ║
+  ║  Each card below has a "scryfallId" field. This is the unique Scryfall  ║
+  ║  card ID that controls the art crop pulled from the API.                ║
+  ║                                                                          ║
+  ║  HOW TO FIND A CARD ID:                                                  ║
+  ║  1. Go to https://scryfall.com and search for any MTG card               ║
+  ║  2. Click the card you want                                               ║
+  ║  3. Copy the ID from the URL:                                             ║
+  ║     scryfall.com/card/SET/NUM/card-name                                   ║
+  ║  4. OR use the API directly:                                              ║
+  ║     https://api.scryfall.com/cards/named?exact=Lightning+Bolt            ║
+  ║     The "id" field in the JSON response is what you need.                 ║
+  ║                                                                          ║
+  ║  HOW TO CHANGE A CARD'S ART:                                             ║
+  ║  Find the card in CARD_DATA below, change its "scryfallId" value.        ║
+  ║  The art crop, artist credit, and set symbol update automatically.       ║
+  ║                                                                          ║
+  ║  MANA SYMBOLS:                                                            ║
+  ║  Use {W} {U} {B} {R} {G} {C} or numbers like {2} {3}                    ║
+  ║  They render automatically as Scryfall SVG icons.                        ║
+  ║                                                                          ║
+  ║  COLOR IDENTITIES (controls frame gradient):                             ║
+  ║  "W" = White   "U" = Blue    "B" = Black                                 ║
+  ║  "R" = Red     "G" = Green   "M" = Gold/Multi   "A" = Artifact           ║
+  ║  "L" = Land                                                              ║
+  ║                                                                          ║
+  ╚══════════════════════════════════════════════════════════════════════════╝
+  -->
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Frame gradients — one per color identity */
+      --frame-W: linear-gradient(160deg, #F0E6B0 0%, #C8B060 40%, #E8D890 100%);
+      --frame-U: linear-gradient(160deg, #A8C8E8 0%, #5080B0 40%, #90B8D8 100%);
+      --frame-B: linear-gradient(160deg, #806890 0%, #302050 40%, #605078 100%);
+      --frame-R: linear-gradient(160deg, #E89060 0%, #B03020 40%, #D07050 100%);
+      --frame-G: linear-gradient(160deg, #80B060 0%, #3A6A18 40%, #70A040 100%);
+      --frame-M: linear-gradient(160deg, #E8C860 0%, #A07820 40%, #D0A830 100%);
+      --frame-A: linear-gradient(160deg, #D0D0D0 0%, #909090 40%, #C0C0C0 100%);
+      --frame-L: linear-gradient(160deg, #C0A870 0%, #806030 40%, #A07840 100%);
+
+      /* Text box tints */
+      --box-W: #F8F4E4;
+      --box-U: #E4EEF8;
+      --box-B: #E4DCF0;
+      --box-R: #F8EAE0;
+      --box-G: #E4F0D8;
+      --box-M: #F8F0D8;
+      --box-A: #F0F0F0;
+      --box-L: #F4ECD8;
+
+      --bg:      #13100a;
+      --bg-card: #1a1610;
+      --text-1:  #f2edd8;
+      --text-2:  #a09070;
+      --text-3:  #605040;
+      --gold:    #c8a030;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 15%, rgba(200,160,48,0.06) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 85%, rgba(80,128,176,0.05) 0%, transparent 55%);
+      color: var(--text-1);
+      font-family: 'Source Serif 4', Georgia, serif;
+      min-height: 100vh;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(19,16,10,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(200,160,48,0.18);
+      padding: 0 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 50px;
+    }
+
+    .nav-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+    }
+
+    .nav-links { display: flex; gap: 1.5rem; list-style: none; }
+    .nav-links a {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-2);
+      text-decoration: none;
+      font-style: italic;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+
+    /* ── LAYOUT ── */
+    .port { max-width: 1000px; margin: 0 auto; padding: 3rem 1.5rem 5rem; }
+
+    /* ── HEADER ── */
+    .port-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-bottom: 2.5rem;
+      border-bottom: 1px solid rgba(200,160,48,0.15);
+    }
+
+    .port-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--text-1);
+      letter-spacing: 0.02em;
+    }
+
+    .port-subtitle {
+      font-style: italic;
+      font-size: 1rem;
+      color: var(--text-2);
+      margin-top: 0.4rem;
+    }
+
+    .contact-row {
+      display: flex; flex-wrap: wrap;
+      justify-content: center;
+      gap: 4px 20px;
+      font-size: 0.78rem;
+      color: var(--text-2);
+      margin-top: 0.8rem;
+    }
+    .contact-row a { color: #7aaedd; text-decoration: none; }
+    .contact-row a:hover { text-decoration: underline; }
+
+    .mana-strip { display: flex; justify-content: center; gap: 6px; margin-top: 1rem; }
+    .mana-strip img { width: 20px; height: 20px; }
+
+    /* ── SECTION HEADS ── */
+    .section-head {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.62rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      text-align: center;
+      margin: 2.5rem 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .section-head::before, .section-head::after {
+      content: ''; flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, rgba(200,160,48,0.25), transparent);
+    }
+
+    /* ── GRIDS ── */
+    .grid   { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 1.2rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.2rem; }
+    .grid-hero { max-width: 280px; margin: 0 auto; }
+
+    /* ══════════════════════════════════════════════
+       AUTHENTIC MTG CARD FRAME
+       Aspect ratio: ~5:7 (63mm × 88mm)
+    ══════════════════════════════════════════════ */
+    .card {
+      position: relative;
+      border-radius: 12px;
+      /* Black outer border */
+      box-shadow:
+        0 0 0 2px #0a0806,
+        0 8px 32px rgba(0,0,0,0.7),
+        inset 0 0 0 1px rgba(255,255,255,0.05);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      cursor: default;
+      /* Color frame is the background */
+      background: var(--frame-U); /* default; overridden per card */
+    }
+
+    .card:hover {
+      transform: translateY(-5px) rotate(0.4deg);
+      box-shadow:
+        0 0 0 2px #0a0806,
+        0 16px 48px rgba(0,0,0,0.85),
+        0 0 24px rgba(200,160,48,0.15),
+        inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    /* Inner padding simulating card interior inset */
+    .card-inner {
+      margin: 7px;
+      border-radius: 7px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #111;
+    }
+
+    /* Name bar */
+    .card-namebar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 8px 4px;
+      background: inherit;
+      /* Name bar gradient matches frame */
+    }
+
+    .card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #1a1208;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+      flex: 1;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+    }
+
+    .card-cost {
+      display: flex;
+      gap: 2px;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+
+    .card-cost img {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* Art box */
+    .card-art {
+      position: relative;
+      width: 100%;
+      height: 130px;
+      overflow: hidden;
+      background: #222;
+      border-top: 1.5px solid rgba(0,0,0,0.5);
+      border-bottom: 1.5px solid rgba(0,0,0,0.5);
+    }
+
+    .card-art img.art-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center top;
+      display: block;
+    }
+
+    .art-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+    }
+
+    .art-loading {
+      font-size: 0.65rem;
+      color: #555;
+      font-style: italic;
+      letter-spacing: 0.06em;
+    }
+
+    .artist-credit {
+      position: absolute;
+      bottom: 0;
+      left: 0; right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.75), transparent);
+      padding: 8px 6px 3px;
+      font-size: 0.52rem;
+      color: rgba(255,255,255,0.6);
+      font-style: italic;
+      letter-spacing: 0.04em;
+      text-align: right;
+    }
+
+    /* Type line */
+    .card-typeline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 3px 8px;
+      background: inherit;
+      border-top: 1px solid rgba(0,0,0,0.2);
+      border-bottom: 1px solid rgba(0,0,0,0.2);
+    }
+
+    .card-type-text {
+      font-family: 'Source Serif 4', serif;
+      font-size: 0.6rem;
+      font-style: italic;
+      color: #1a1208;
+      letter-spacing: 0.02em;
+      flex: 1;
+    }
+
+    .card-set-icon {
+      font-size: 0.7rem;
+      color: #1a1208;
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    /* Text box */
+    .card-textbox {
+      flex: 1;
+      padding: 6px 8px 5px;
+      font-size: 0.68rem;
+      line-height: 1.5;
+      color: #1a1208;
+    }
+
+    .card-ability {
+      margin-bottom: 3px;
+    }
+
+    .ability-kw {
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .card-flavor-text {
+      font-style: italic;
+      font-size: 0.63rem;
+      color: #3a2a18;
+      border-top: 1px solid rgba(0,0,0,0.12);
+      padding-top: 4px;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    .oracle-sym {
+      width: 12px;
+      height: 12px;
+      vertical-align: middle;
+      display: inline-block;
+      margin: 0 1px;
+    }
+
+    /* Bottom bar — rarity + P/T */
+    .card-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 8px;
+      background: inherit;
+      border-top: 1px solid rgba(0,0,0,0.15);
+    }
+
+    .card-rarity {
+      font-size: 0.52rem;
+      color: #2a1a08;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.7;
+    }
+
+    .card-pt {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #1a1208;
+      background: rgba(255,255,255,0.35);
+      border: 1.5px solid rgba(0,0,0,0.25);
+      border-radius: 50%;
+      width: 28px; height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);
+      font-size: 0.6rem;
+    }
+
+    .card-loyalty {
+      font-family: 'Playfair Display', serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #fff;
+      background: #2255AA;
+      border-radius: 50%;
+      width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid #6699DD;
+    }
+
+    /* Frame color variants — applied to .card directly */
+    .card.color-W { background: var(--frame-W); }
+    .card.color-W .card-textbox { background: var(--box-W); }
+    .card.color-W .card-namebar,
+    .card.color-W .card-typeline,
+    .card.color-W .card-footer { background: linear-gradient(135deg, #F0E6B0, #C8B060); }
+
+    .card.color-U { background: var(--frame-U); }
+    .card.color-U .card-textbox { background: var(--box-U); }
+    .card.color-U .card-namebar,
+    .card.color-U .card-typeline,
+    .card.color-U .card-footer { background: linear-gradient(135deg, #A8C8E8, #5080B0); }
+
+    .card.color-B { background: var(--frame-B); }
+    .card.color-B .card-textbox { background: var(--box-B); color: #ede8f8; }
+    .card.color-B .card-name,
+    .card.color-B .card-type-text,
+    .card.color-B .card-rarity,
+    .card.color-B .card-ability { color: #ede8f8; }
+    .card.color-B .card-flavor-text { color: #c8c0e0; border-color: rgba(255,255,255,0.12); }
+    .card.color-B .card-namebar,
+    .card.color-B .card-typeline,
+    .card.color-B .card-footer { background: linear-gradient(135deg, #806890, #302050); }
+
+    .card.color-R { background: var(--frame-R); }
+    .card.color-R .card-textbox { background: var(--box-R); }
+    .card.color-R .card-namebar,
+    .card.color-R .card-typeline,
+    .card.color-R .card-footer { background: linear-gradient(135deg, #E89060, #B03020); }
+
+    .card.color-G { background: var(--frame-G); }
+    .card.color-G .card-textbox { background: var(--box-G); }
+    .card.color-G .card-namebar,
+    .card.color-G .card-typeline,
+    .card.color-G .card-footer { background: linear-gradient(135deg, #80B060, #3A6A18); }
+
+    .card.color-M { background: var(--frame-M); }
+    .card.color-M .card-textbox { background: var(--box-M); }
+    .card.color-M .card-namebar,
+    .card.color-M .card-typeline,
+    .card.color-M .card-footer { background: linear-gradient(135deg, #E8C860, #A07820); }
+
+    .card.color-A { background: var(--frame-A); }
+    .card.color-A .card-textbox { background: var(--box-A); }
+    .card.color-A .card-namebar,
+    .card.color-A .card-typeline,
+    .card.color-A .card-footer { background: linear-gradient(135deg, #D0D0D0, #909090); }
+
+    .card.color-L { background: var(--frame-L); }
+    .card.color-L .card-textbox { background: var(--box-L); }
+    .card.color-L .card-namebar,
+    .card.color-L .card-typeline,
+    .card.color-L .card-footer { background: linear-gradient(135deg, #C0A870, #806030); }
+
+    /* Mythic shimmer */
+    .card.mythic::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      pointer-events: none;
+      background: linear-gradient(
+        125deg,
+        transparent 20%,
+        rgba(255,200,80,0.06) 40%,
+        rgba(255,120,40,0.05) 55%,
+        transparent 70%
+      );
+    }
+
+    /* Skill pills */
+    .skill-pill {
+      display: inline-block;
+      background: rgba(0,0,0,0.08);
+      border: 0.5px solid rgba(0,0,0,0.15);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 0.58rem;
+      margin: 1px 1px 1px 0;
+      letter-spacing: 0.02em;
+    }
+
+    /* Skill art box */
+    .skill-art-box {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      padding: 6px;
+      height: 130px;
+      background: #1a1a1a;
+      border-top: 1.5px solid rgba(0,0,0,0.5);
+      border-bottom: 1.5px solid rgba(0,0,0,0.5);
+      gap: 2px;
+      overflow: hidden;
+    }
+
+    .skill-art-box .skill-pill {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.15);
+      color: #d0c8a0;
+    }
+
+    /* Footer area */
+    .port-footer {
+      text-align: center;
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(200,160,48,0.12);
+      font-style: italic;
+      font-size: 0.78rem;
+      color: var(--text-3);
+    }
+    .port-footer a { color: #7aaedd; text-decoration: none; }
+
+    /* Error state */
+    .art-error {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      gap: 4px;
+      background: #1a1208;
+    }
+    .art-error-icon { font-size: 1.4rem; opacity: 0.3; }
+    .art-error-text { font-size: 0.58rem; color: #555; font-style: italic; }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 1rem; }
+      .nav-links { display: none; }
+      .port-name { font-size: 1.8rem; }
+      .port { padding: 2rem 1rem 3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-name">Matthew A. Sambawa</span>
+  <ul class="nav-links">
+    <li><a href="#education">Education</a></li>
+    <li><a href="#experience">Experience</a></li>
+    <li><a href="#projects">Projects</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<main class="port">
+
+  <!-- HEADER -->
+  <header class="port-header" id="contact">
+    <div class="port-name">Matthew A. Sambawa</div>
+    <div class="port-subtitle">Cognitive Scientist · Developer · UX Designer</div>
+    <div class="contact-row">
+      <span>San Diego, CA</span>
+      <a href="mailto:mattsambawa@gmail.com">mattsambawa@gmail.com</a>
+      <a href="tel:8586665644">858-666-5644</a>
+      <a href="https://mattsambawa.wixstudio.com/home" target="_blank" rel="noopener">Portfolio</a>
+      <a href="https://github.com/MattSambawa" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <div class="mana-strip" id="header-mana"></div>
+  </header>
+
+  <!-- LEGEND -->
+  <div class="section-head">The Legend</div>
+  <div class="grid-hero" id="hero-section"></div>
+
+  <!-- EDUCATION -->
+  <div class="section-head" id="education">Education</div>
+  <div class="grid-2" id="education-section"></div>
+
+  <!-- EXPERIENCE -->
+  <div class="section-head" id="experience">Experience</div>
+  <div class="grid-2" id="experience-section"></div>
+
+  <!-- PROJECTS -->
+  <div class="section-head" id="projects">Projects</div>
+  <div class="grid" id="projects-section"></div>
+
+  <!-- COMMUNITY -->
+  <div class="section-head">Community</div>
+  <div class="grid-2" id="community-section"></div>
+
+  <footer class="port-footer">
+    <p>Matthew A. Sambawa &mdash;
+      <a href="mailto:mattsambawa@gmail.com">mattsambawa@gmail.com</a> &mdash;
+      <a href="https://github.com/MattSambawa" target="_blank" rel="noopener">github.com/MattSambawa</a>
+    </p>
+    <p style="margin-top:0.5rem;font-size:0.68rem;">
+      Card imagery courtesy of <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>.
+      Magic: The Gathering is &copy; Wizards of the Coast.
+    </p>
+  </footer>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   CARD DATA
+   ─────────────────────────────────────────────────────────────────────────
+   To change the art on any card:
+     1. Go to https://scryfall.com, find a card you like
+     2. Get its ID from the URL or the API
+     3. Replace the "scryfallId" value below
+
+   Scryfall named card API example:
+     https://api.scryfall.com/cards/named?exact=Opt
+   The "id" field in the response is what you paste here.
+
+   Mana cost format: use {W} {U} {B} {R} {G} {C} {2} etc.
+   Color identity:   "W" "U" "B" "R" "G" "M" (gold/multi) "A" (artifact) "L" (land)
+══════════════════════════════════════════════════════════════════════════ */
+const CARD_DATA = {
+
+  hero: {
+    name: "Matthew A. Sambawa",
+    scryfallId: "5f6b1d7a-3e02-4b79-ac53-2d14f6f55826", // Archmage Emeritus — blue wizard scholar
+    manaCost: ["{3}","{U}","{G}"],
+    color: "M",
+    rarity: "Mythic Rare · MS-001",
+    mythic: true,
+    typeLine: "Legendary Creature — Human Designer Engineer",
+    abilities: [
+      { keyword: "Polymath", text: " — has all subtypes on cards in your hand." },
+      { keyword: "Partner with Design", text: " — whenever a project completes, draw a card." }
+    ],
+    flavor: '"Two specializations, one codebase, infinite curiosity."',
+    pt: "5/5"
+  },
+
+  education: [
+    {
+      name: "UCSD Cognitive Sciences Decree",
+      scryfallId: "3c0f8bbd-8b72-44b6-a4c1-f6e052a9a8fb", // Sage of Lat-Nam — scholarly blue wizard
+      manaCost: ["{2}","{U}","{U}"],
+      color: "U",
+      rarity: "Rare · MS-002",
+      typeLine: "Enchantment — Education Degree",
+      abilities: [
+        { keyword: null, text: "UX and Systems spells cost {1} less to cast." },
+        { keyword: null, text: "At the beginning of your upkeep, scry 1." }
+      ],
+      flavor: '"Where the ocean meets the operating system."',
+      loyalty: "4"
+    },
+    {
+      name: "HarvardX AI Certification",
+      scryfallId: "a9a4b8da-9b70-4d50-9a6a-16e18b8aa1e3", // Spellbook Vendor — red book/fire
+      manaCost: ["{R}","{R}"],
+      color: "R",
+      rarity: "Uncommon · MS-003",
+      typeLine: "Instant — Certification Achievement",
+      abilities: [
+        { keyword: "Flash. Proficiency.", text: "" },
+        { keyword: null, text: "AI-subtype creatures you control gain +2/+0. Draw a card." }
+      ],
+      flavor: '"Harvard\'s seal; Matthew\'s proof of concept."'
+    },
+    {
+      name: "TripleTen Automation Rite",
+      scryfallId: "5a7a4640-3e89-4df8-9049-8b9cb2a56b82", // Nissa's Encouragement — green growth
+      manaCost: ["{1}","{G}"],
+      color: "G",
+      rarity: "Uncommon · MS-004",
+      typeLine: "Sorcery — Training Bootcamp",
+      abilities: [
+        { keyword: "In Progress.", text: " Add {G} to your mana pool each turn." },
+        { keyword: null, text: "Search library for an Automation card; put it in hand. Shuffle." }
+      ],
+      flavor: '"The ritual grows stronger by the day."'
+    }
+  ],
+
+  experience: [
+    {
+      name: "UCSD Scripps Network Sentinel",
+      scryfallId: "9e6f5d09-9d36-4b1d-93d2-e01ced93fc89", // Cryptic Command — iconic blue control
+      manaCost: ["{3}","{U}","{U}"],
+      color: "U",
+      rarity: "Rare · MS-005",
+      typeLine: "Creature — Engineer Wizard",
+      abilities: [
+        { keyword: "Vigilance. Flying.", text: "" },
+        { keyword: null, text: "{T}: Transfer terabytes securely. AlertCalifornia partnership gains hexproof until end of turn." },
+        { keyword: null, text: "On-site maintenance of cameras and network equipment at remote field locations." }
+      ],
+      flavor: '"Infrastructure as art form."',
+      pt: "4/4"
+    },
+    {
+      name: "Rell UX Design Conjurer",
+      scryfallId: "f2c7c0b0-1e81-4c30-a75a-3fe33fb0ef3e", // Aether Adept — white/blue designer
+      manaCost: ["{2}","{W}"],
+      color: "W",
+      rarity: "Uncommon · MS-006",
+      typeLine: "Creature — Designer Advisor",
+      abilities: [
+        { keyword: "Mentor. Prototype.", text: "" },
+        { keyword: null, text: "Creates a Figma token on entry. Supply chain spells cost {1} less." },
+        { keyword: null, text: "End-to-end product workflows with interactive prototypes for stakeholder review." }
+      ],
+      flavor: '"Clarity and usability — never one without the other."',
+      pt: "3/2"
+    }
+  ],
+
+  projects: [
+    {
+      name: "How-to-MTG Tome",
+      scryfallId: "3c4e1c66-f03d-4139-8c93-8a53e5b748c7", // Tome of the Guildpact — red/green book
+      manaCost: ["{R}","{G}"],
+      color: "R",
+      rarity: "Uncommon · MS-007",
+      typeLine: "Artifact — Project Tome",
+      abilities: [
+        { keyword: null, text: "HTML, CSS, JavaScript, React. Wireframed in Balsamiq. Verified via DevTools." },
+        { keyword: null, text: "New players who discover this card draw 2 cards." }
+      ],
+      flavor: '"Every great player was once a newcomer."'
+    },
+    {
+      name: "Beauty of Japan Interface",
+      scryfallId: "c94cd1f4-dea9-4e6e-b8e2-de4a0fec76b0", // Michiko Konda — Japanese aesthetic
+      manaCost: ["{1}","{W}","{U}"],
+      color: "W",
+      rarity: "Common · MS-008",
+      typeLine: "Artifact — Showcase Persistent",
+      abilities: [
+        { keyword: "Persistent", text: " — remains in play indefinitely." },
+        { keyword: null, text: "Showcases Japanese culture and tourism through intuitive UI/UX architecture. Google Sites." }
+      ],
+      flavor: '"Design that guides, never confuses."'
+    },
+    {
+      name: "The Skill Armory",
+      scryfallId: null, // No art — uses skill pill layout instead
+      manaCost: ["{0}"],
+      color: "A",
+      rarity: "Rare · MS-009",
+      typeLine: "Artifact — Equipment Cache",
+      skills: ["HTML","CSS","JavaScript","Python","C++","Java","NodeJS","React","Zapier","AWS","Figma","GitHub","Balsamiq","Prompt Eng.","Systems Net.","Visual Studio"],
+      abilities: [
+        { keyword: "Equip {0}", text: " — Attach any skill to Matthew at no cost." },
+        { keyword: null, text: "Coursework: Data Structures, OOP, Data Science, Machine Learning (LLMs, Neural Networks)." }
+      ],
+      flavor: '"The best toolkit is the one you keep sharpening."'
+    }
+  ],
+
+  community: [
+    {
+      name: "El Cajon Build Site",
+      scryfallId: "d5f98e62-cca1-4fc7-a4b8-6e7e4e62d0e8", // Blossoming Calm — green community
+      manaCost: [],
+      color: "G",
+      rarity: "Basic Land · MS-010",
+      typeLine: "Land — Community Volunteer Site",
+      abilities: [
+        { keyword: null, text: "{T}: Add {G} or {W}." },
+        { keyword: null, text: "Built four homes in El Cajon. Fences, windows, community woven from the ground up." }
+      ],
+      flavor: '"A home is the first card in anyone\'s hand."'
+    },
+    {
+      name: "San Diego Nexus",
+      scryfallId: "b12a4a54-e1ce-4b5c-b8b3-e3f87b4b3e4c", // Command Tower — iconic land card
+      manaCost: [],
+      color: "L",
+      rarity: "Special Land · MS-011",
+      typeLine: "Land — Home Base",
+      abilities: [
+        { keyword: null, text: "{T}: Add one mana of any color." },
+        { keyword: null, text: "Interests: Astronomy, Cinematography, Mountain Biking, Soccer, Culinary Arts, Tabletop RPG, Trading Cards." }
+      ],
+      flavor: '"All roads lead back to the city by the sea."'
+    }
+  ]
+};
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SCRYFALL UTILITIES
+══════════════════════════════════════════════════════════════════════════ */
+
+// Mana symbol SVG URL from Scryfall CDN
+function manaSymbolUrl(symbol) {
+  // Strip braces e.g. {U} → U, handle numbers and X
+  const clean = symbol.replace(/[{}]/g, '').toUpperCase();
+  return `https://svgs.scryfall.io/card-symbols/${clean}.svg`;
+}
+
+// Render mana cost string as a row of <img> elements
+function renderManaCost(arr) {
+  return arr.map(sym => {
+    const clean = sym.replace(/[{}]/g, '').toUpperCase();
+    return `<img src="https://svgs.scryfall.io/card-symbols/${clean}.svg"
+                 alt="${sym}" title="${sym}"
+                 onerror="this.style.display='none'">`;
+  }).join('');
+}
+
+// Render inline oracle text symbols (e.g. {T}, {G} inside ability text)
+function renderOracleText(text) {
+  return text.replace(/\{([^}]+)\}/g, (match, sym) => {
+    const clean = sym.toUpperCase();
+    return `<img class="oracle-sym" src="https://svgs.scryfall.io/card-symbols/${clean}.svg"
+                 alt="${match}" title="${match}"
+                 onerror="this.outerHTML='${match}'">`;
+  });
+}
+
+// Fetch art crop from Scryfall by card ID
+async function fetchArtCrop(scryfallId) {
+  if (!scryfallId) return null;
+  try {
+    const res = await fetch(
+      `https://api.scryfall.com/cards/${scryfallId}`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+    if (!res.ok) throw new Error('Not found');
+    const data = await res.json();
+    return {
+      artCrop: data.image_uris?.art_crop || null,
+      artist:  data.artist || null,
+      setName: data.set_name || null
+    };
+  } catch {
+    return null;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CARD BUILDER
+══════════════════════════════════════════════════════════════════════════ */
+
+function buildCard(cardData) {
+  const {
+    name, manaCost = [], color = 'U', rarity = '', typeLine = '',
+    abilities = [], flavor = '', pt = null, loyalty = null,
+    mythic = false, skills = null, scryfallId = null
+  } = cardData;
+
+  const id = `card-${Math.random().toString(36).slice(2, 9)}`;
+
+  const abilitiesHtml = abilities.map(a => {
+    const kw = a.keyword ? `<span class="ability-kw">${a.keyword}</span>` : '';
+    return `<div class="card-ability">${kw}${renderOracleText(a.text)}</div>`;
+  }).join('');
+
+  const ptHtml = pt
+    ? `<div class="card-pt">${pt}</div>`
+    : loyalty
+    ? `<div class="card-loyalty">${loyalty}</div>`
+    : '';
+
+  let artHtml;
+  if (skills) {
+    // Skill pill layout in art area
+    const pillsHtml = skills.map(s => `<span class="skill-pill">${s}</span>`).join('');
+    artHtml = `<div class="skill-art-box">${pillsHtml}</div>`;
+  } else {
+    artHtml = `
+      <div class="card-art" id="art-${id}">
+        <div class="art-placeholder"><div class="art-loading">Loading art…</div></div>
+      </div>`;
+  }
+
+  const html = `
+    <div class="card color-${color}${mythic ? ' mythic' : ''}" id="${id}">
+      <div class="card-inner">
+        <div class="card-namebar">
+          <div class="card-name">${name}</div>
+          <div class="card-cost">${renderManaCost(manaCost)}</div>
+        </div>
+        ${artHtml}
+        <div class="card-typeline">
+          <div class="card-type-text">${typeLine}</div>
+          <div class="card-set-icon">★</div>
+        </div>
+        <div class="card-textbox">
+          ${abilitiesHtml}
+          ${flavor ? `<div class="card-flavor-text">${flavor}</div>` : ''}
+        </div>
+        <div class="card-footer">
+          <div class="card-rarity">${rarity}</div>
+          ${ptHtml}
+        </div>
+      </div>
+    </div>`;
+
+  return { html, id, scryfallId };
+}
+
+function appendCards(containerId, cardsData) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const tasks = [];
+  cardsData.forEach(cardData => {
+    const { html, id, scryfallId } = buildCard(cardData);
+    container.insertAdjacentHTML('beforeend', html);
+    if (scryfallId) {
+      tasks.push({ id, scryfallId });
+    }
+  });
+  // Load art asynchronously with small delay between requests (Scryfall rate limit courtesy)
+  tasks.forEach(({ id, scryfallId }, i) => {
+    setTimeout(() => loadArt(id, scryfallId), i * 120);
+  });
+}
+
+async function loadArt(cardId, scryfallId) {
+  const artBox = document.getElementById(`art-${cardId}`);
+  if (!artBox) return;
+
+  const data = await fetchArtCrop(scryfallId);
+
+  if (data && data.artCrop) {
+    const img = document.createElement('img');
+    img.className = 'art-image';
+    img.alt = 'Card art';
+    img.src = data.artCrop;
+    img.onload = () => {
+      artBox.innerHTML = '';
+      artBox.appendChild(img);
+      if (data.artist) {
+        const credit = document.createElement('div');
+        credit.className = 'artist-credit';
+        credit.textContent = `Illus. ${data.artist}`;
+        artBox.appendChild(credit);
+      }
+    };
+    img.onerror = () => showArtError(artBox);
+  } else {
+    showArtError(artBox);
+  }
+}
+
+function showArtError(artBox) {
+  artBox.innerHTML = `
+    <div class="art-error">
+      <div class="art-error-icon">⚔</div>
+      <div class="art-error-text">Art unavailable — update Scryfall ID</div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════════════ */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  // Header mana strip
+  const headerMana = document.getElementById('header-mana');
+  ['{W}','{U}','{B}','{R}','{G}'].forEach(sym => {
+    const clean = sym.replace(/[{}]/g,'').toUpperCase();
+    const img = document.createElement('img');
+    img.src = `https://svgs.scryfall.io/card-symbols/${clean}.svg`;
+    img.alt = sym;
+    img.style.cssText = 'width:22px;height:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5))';
+    headerMana.appendChild(img);
+  });
+
+  // Hero
+  const heroContainer = document.getElementById('hero-section');
+  const { html, id, scryfallId } = buildCard(CARD_DATA.hero);
+  heroContainer.insertAdjacentHTML('beforeend', html);
+  if (scryfallId) setTimeout(() => loadArt(id, scryfallId), 50);
+
+  // Sections
+  appendCards('education-section',  CARD_DATA.education);
+  appendCards('experience-section', CARD_DATA.experience);
+  appendCards('projects-section',   CARD_DATA.projects);
+  appendCards('community-section',  CARD_DATA.community);
+});
+</script>
+</body>
+</html>
